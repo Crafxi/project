@@ -6,11 +6,11 @@ import os
 sqlite3_db = 'database.db'
 conn = sqlite3.connect(sqlite3_db)
 c = conn.cursor()
-c.execute('''CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT, password TEXT, rank TEXT)''')
+c.execute('''CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT, password TEXT, role TEXT)''')
 c.execute('SELECT * FROM users WHERE username=?', ('admin',))
 if not c.fetchone():
     hashed_password = bcrypt.hashpw('password'.encode('utf-8'), bcrypt.gensalt())
-    c.execute('''INSERT INTO users (username, password, rank) VALUES ('admin', ?, 'admin')''', (hashed_password,))
+    c.execute('''INSERT INTO users (username, password, role) VALUES ('admin', ?, 'admin')''', (hashed_password,))
 conn.commit()
 
 
