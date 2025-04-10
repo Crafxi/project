@@ -52,8 +52,8 @@ def inject_layout():
         </header>
         '''
     footer_html = '''
-    <footer class="bg-stone-900 text-stone-300 p-4 fixed bottom-0 w-full text-center font-sans">
-        <p>&copy; 2023 Meine Webseite. Alle Rechte vorbehalten.</p>
+    <footer class="bg-stone-900 text-stone-300 p-4 w-full text-center font-sans fixed bottom-0">
+        <p>&copy; 2025 Meine Webseite. Alle Rechte vorbehalten.</p>
     </footer>
     '''
     return dict(render_header=render_header, footer=footer_html)

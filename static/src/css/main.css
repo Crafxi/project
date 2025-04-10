@@ -22,6 +22,7 @@
     --color-blue-600: oklch(54.6% 0.245 262.881);
     --color-blue-700: oklch(48.8% 0.243 264.376);
     --color-indigo-500: oklch(58.5% 0.233 277.117);
+    --color-gray-200: oklch(92.8% 0.006 264.531);
     --color-gray-300: oklch(87.2% 0.01 258.338);
     --color-gray-400: oklch(70.7% 0.022 261.325);
     --color-gray-500: oklch(55.1% 0.027 264.364);
@@ -225,11 +226,20 @@
   .static {
     position: static;
   }
+  .sticky {
+    position: sticky;
+  }
   .inset-0 {
     inset: calc(var(--spacing) * 0);
   }
+  .top-0 {
+    top: calc(var(--spacing) * 0);
+  }
   .bottom-0 {
     bottom: calc(var(--spacing) * 0);
+  }
+  .z-20 {
+    z-index: 20;
   }
   .container {
     width: 100%;
@@ -293,6 +303,12 @@
   }
   .h-0\.5 {
     height: calc(var(--spacing) * 0.5);
+  }
+  .max-h-96 {
+    max-height: calc(var(--spacing) * 96);
+  }
+  .max-h-screen {
+    max-height: 100vh;
   }
   .w-1 {
     width: calc(var(--spacing) * 1);
@@ -361,6 +377,9 @@
   .place-self-end {
     place-self: end;
   }
+  .overflow-y-auto {
+    overflow-y: auto;
+  }
   .rounded {
     border-radius: 0.25rem;
   }
@@ -399,6 +418,9 @@
   }
   .bg-blue-600 {
     background-color: var(--color-blue-600);
+  }
+  .bg-gray-200 {
+    background-color: var(--color-gray-200);
   }
   .bg-gray-500 {
     background-color: var(--color-gray-500);
