@@ -68,9 +68,9 @@
         {{ footer|safe }}
 
         <!-- Edit User Modal -->
-        <div id="editUserModal" class="flex fixed inset-0 bg-gray-800 items-center justify-center" style="display: none;">
+        <div id="editUserModal" class="flex fixed inset-0 items-center justify-center" style="display: none; background-color: rgba(0, 0, 0, 0.5);">
             <div class="bg-white p-6 rounded shadow-lg w-1/3">
-            <h3 class="text-xl mb-4">Benutzer bearbeiten</h3>
+            <h3 class="text-xl mb-4" id="editTitle"></h3>
             <form id="editUserForm" method="POST" action="">
                 <input type="hidden" id="editUserId" name="user_id">
                 <div class="mb-2">
@@ -99,6 +99,7 @@
         <script>
             function openEditModal(userId, username, role) {
                 document.getElementById('editUserId').value = userId;
+                document.getElementById('editTitle').innerText = `Benutzer "${username}" bearbeiten`;
                 document.getElementById('editUsername').value = username;
                 document.getElementById('editRole').value = role;
                 document.getElementById('editUserForm').action = `/edit_user/${userId}`;
