@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="de">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{{ title }}</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='/src/css/main.css') }}">
+        <script src="{{ url_for('static', filename='/src/js/main.js') }}"></script>
+    </head>
+    <body>
+        {{ render_header(header_text)|safe }}
+        <main class="container mx-auto p-4">
+            <h2 class="text-2xl mb-4">Benutzerdetails</h2>
+            <h3>Benutzerverwaltung</h3>
+            <table class="table-auto w-full border-collapse border border-gray-400 cursor-default">
+                <thead>
+                    <tr>
+                        <th class="border border-gray-400 px-4 py-2">Benutzername</th>
+                        <th class="border border-gray-400 px-4 py-2">Rolle</th>
+                        <th class="border border-gray-400 px-4 py-2">Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                        <tr>
+                            <td class="border border-gray-400 px-4 py-2">{{ user[1] }}</td>
+                            <td class="border border-gray-400 px-4 py-2">{{ user[3] }}</td>
+                            <td class="border border-gray-400 px-4 py-2">
+                                <!-- Edit User Modal Trigger -->
+                                <button type="button" onclick="openEditModal('{{ user[0] }}', '{{ user[1] }}', '{{ user[3] }}')" class="bg-blue-500 text-white px-2 py-1 rounded cursor-pointer">Bearbeiten</button>
+                                <!-- Delete User Form -->
+                                <form method="POST" action="{{ url_for('delete_user', user_id=user[0]) }}" class="inline" onsubmit="return confirm('Möchten Sie diesen Benutzer wirklich löschen?');">
+                                    <button type="submit" class="bg-red-500 text-white px-2 py-1 rounded cursor-pointer">Löschen</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <h4 class="mt-4">Neuen Benutzer hinzufügen</h4>
+            <form id="addUserForm" method="POST" action="{{ url_for('add_user') }}">
+                {% if error %}
+                    <div class="text-red-500">{{ error }}</div>
+                {% endif %}
+                <div class="mb-2">
+                    <label for="username" class="block">Benutzername:</label>
+                    <input type="text" id="username" name="username" class="border border-gray-400 px-2 py-1 w-full" required>
+                </div>
+                <div class="mb-2">
+                    <label for="password" class="block">Passwort:</label>
+                    <input type="password" id="password" name="password" class="border border-gray-400 px-2 py-1 w-full" required>
+                </div>
+                <div class="mb-2">
+                    <label for="role" class="block">Rolle:</label>
+                    <select id="role" name="role" class="border border-gray-400 px-2 py-1 w-full" required>
+                        <option value="admin">Admin</option>
+                        <option value="user">Benutzer</option>
+                    </select>
+                </div>
+                <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded">Hinzufügen</button>
+            </form>
+        </main>
+
+        {{ footer|safe }}
+
+        <!-- Edit User Modal -->
+        <div id="editUserModal" class="flex fixed inset-0 bg-gray-800 items-center justify-center" style="display: none;">
+            <div class="bg-white p-6 rounded shadow-lg w-1/3">
+            <h3 class="text-xl mb-4">Benutzer bearbeiten</h3>
+            <form id="editUserForm" method="POST" action="">
+                <input type="hidden" id="editUserId" name="user_id">
+                <div class="mb-2">
+                <label for="editUsername" class="block">Benutzername:</label>
+                <input type="text" id="editUsername" name="username" class="border border-gray-400 px-2 py-1 w-full" required>
+                </div>
+                <div class="mb-2">
+                <label for="editPassword" class="block">Passwort (leer lassen, um es nicht zu ändern):</label>
+                <input type="password" id="editPassword" name="password" class="border border-gray-400 px-2 py-1 w-full">
+                </div>
+                <div class="mb-2">
+                <label for="editRole" class="block">Rolle:</label>
+                <select id="editRole" name="role" class="border border-gray-400 px-2 py-1 w-full" required>
+                    <option value="admin">Admin</option>
+                    <option value="user">Benutzer</option>
+                </select>
+                </div>
+                <div class="flex justify-end">
+                <button type="button" onclick="closeEditModal()" class="bg-gray-500 text-white px-4 py-2 rounded mr-2">Abbrechen</button>
+                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Speichern</button>
+                </div>
+            </form>
+            </div>
+        </div>
+
+        <script>
+            function openEditModal(userId, username, role) {
+                document.getElementById('editUserId').value = userId;
+                document.getElementById('editUsername').value = username;
+                document.getElementById('editRole').value = role;
+                document.getElementById('editUserForm').action = `/edit_user/${userId}`;
+                document.getElementById('editUserModal').style.display = 'flex'; // Ensure display is set to 'flex'
+            }
+            
+            function closeEditModal() {
+                document.getElementById('editUserModal').style.display = 'none'; // Hide the modal
+            }
+        </script>
+
+        
+    </body>
+</html>
