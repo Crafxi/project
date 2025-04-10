@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="de">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{{ title }}</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='/src/css/main.css') }}">
+        <script src="{{ url_for('static', filename='/src/js/main.js') }}"></script>
+    </head>
+    <body>
+        {{ render_header(header_text)|safe }}
+        <main class="container mx-auto p-4">
+            <h2 class="text-2xl mb-4">Benutzerdetails</h2>
+            {% if user %}
+                <div class="profile-card">
+                    <h3>Profil</h3>
+                    <p><strong>Benutzername:</strong> {{ user }}</p>
+                </div>
+            {% else %}
+                <p>Der Benutzer wurde nicht gefunden.</p>
+            {% endif %}
+        </main>
+        {{ footer|safe }}
+    </body>
+</html>

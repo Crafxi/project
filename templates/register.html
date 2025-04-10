@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="de">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{{ title }}</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='/src/css/main.css') }}">
+        <script src="{{ url_for('static', filename='/src/js/main.js') }}"></script>
+    </head>
+    <body>
+        {{ render_header(header_text)|safe }}
+        <main class="p-4"></main>
+            <form action="{{ url_for('register') }}" method="post" class="space-y-4">
+                {% if error %}
+                <div class="text-red-500">{{ error }}</div>
+                {% endif %}
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700">Benutzername</label>
+                    <input type="text" id="username" name="username" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700">Passwort</label>
+                    <input type="password" id="password" name="password" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                </div>
+                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md">Registrieren</button>
+            </form>
+        </main>
+        {{ footer|safe }}
+    </body>
+</html>
