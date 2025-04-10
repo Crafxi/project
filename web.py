@@ -2,7 +2,6 @@ from flask import *
 import sqlite3
 import bcrypt
 import os
-import uuid
 
 sqlite3_db = 'database.db'
 conn = sqlite3.connect(sqlite3_db)
@@ -10,7 +9,8 @@ c = conn.cursor()
 c.execute('''CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT, password TEXT)''')
 c.execute('SELECT * FROM users WHERE username=?', ('admin',))
 if not c.fetchone():
-    c.execute('''INSERT INTO users (username, password) VALUES ('admin', 'password')''')
+    hashed_password = bcrypt.hashpw('password'.encode('utf-8'), bcrypt.gensalt())
+    c.execute('''INSERT INTO users (username, password) VALUES ('admin', ?)''', (hashed_password,))
 conn.commit()
 
 app = Flask(__name__)
@@ -20,8 +20,7 @@ app.secret_key = os.urandom(12)
 @app.context_processor
 def inject_layout():
     def render_header(header_text):
-        session_id = request.cookies.get('session_id')
-        username = session.get(session_id)
+        username = session.get('username')
         logout_button = ''
         user_info = ''
         if username:
@@ -48,11 +47,8 @@ def inject_layout():
 
 @app.route('/')
 def index():
-    session_id = request.cookies.get('session_id')
-    if session_id:
-        username = session.get(session_id)
-        if username:
-            return redirect(url_for('welcome'))
+    if 'username' in session:
+        return redirect(url_for('welcome'))
     title = request.args.get('title', 'Default Title')
     return render_template('index.html', title=title, header_text='Welcome to My Website')
 
@@ -92,38 +88,29 @@ def login():
 
     # Verify the hashed password
     if user and bcrypt.checkpw(password.encode('utf-8'), user[2]):
-        session_id = str(uuid.uuid4())
-        session[session_id] = username
-        response = redirect(url_for('welcome'))
-        response.set_cookie('session_id', session_id, max_age=60*60*24)  # Set cookie for 1 day
-        return response
+        session['username'] = username  # Store the username in the session
+        return redirect(url_for('welcome'))
     else:
         return render_template('index.html', error='Passwort oder Benutzername falsch', header_text='Login Page')
 
 
 @app.route('/logout')
 def logout():
-    session_id = request.cookies.get('session_id')
-    if session_id and session_id in session:
-        session.pop(session_id)
-    response = redirect(url_for('index'))
-    response.delete_cookie('session_id')  # Remove the cookie
-    return response
+    session.pop('username', None)  # Remove the username from the session
+    return redirect(url_for('index'))
 
 
 @app.route('/welcome')
 def welcome():
-    session_id = request.cookies.get('session_id')
-    username = session.get(session_id)
+    username = session.get('username')
     if not username:
         return redirect(url_for('index'))
-    return render_template('welcome.html', header_text='Welcome Page')
+    return render_template('welcome.html', header_text='Welcome Page', username=username)
 
 
 @app.route('/user/<username>')
 def user_profile(username):
-    session_id = request.cookies.get('session_id')
-    logged_in_user = session.get(session_id)
+    logged_in_user = session.get('username')
     if not logged_in_user:
         return redirect(url_for('index'))
     conn = sqlite3.connect(sqlite3_db)
@@ -134,13 +121,12 @@ def user_profile(username):
     if user:
         return render_template('users.html', user=user[1], header_text=f'Profile of {user[1]}')
     else:
-        return render_template('users.html')
+        return render_template('users.html', error='User not found')
 
 
 @app.get('/search_user')
 def search_user():
-    session_id = request.cookies.get('session_id')
-    logged_in_user = session.get(session_id)
+    logged_in_user = session.get('username')
     if not logged_in_user:
         return redirect(url_for('index'))
     username = request.args.get('username', '')
