@@ -105,7 +105,7 @@ def login():
         session['username'] = username  # Store the username in the session
         return redirect(url_for('welcome'))
     else:
-        return render_template('index.html', error='Passwort oder Benutzername falsch', header_text='Login')
+        return render_template('index.html', error='Passwort oder Benutzername falsch', header_text='Eigene Website Login Test')
 
 
 @app.route('/logout')

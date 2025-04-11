@@ -6,6 +6,7 @@
         <title>{{ title }}</title>
         <link rel="stylesheet" href="{{ url_for('static', filename='/src/css/main.css') }}">
         <script src="{{ url_for('static', filename='/src/js/main.js') }}"></script>
+        <script src="{{ url_for('static', filename='/src/js/fluent.js') }}"></script>
     </head>
     <body>
         {{ render_header(header_text)|safe }}
