@@ -14,7 +14,7 @@
             <p>Dies ist ein Beispieltext.</p>
             <form action="/login" method="post" class="mt-4">
                 {% if error %}
-                <div class="text-red-500">{{ error }}</div>
+                    <div class="text-red-500">{{ error }}</div>
                 {% endif %}
                 <input type="text" name="username" placeholder="Benutzername" required class="border p-2 mb-2">
                 <input type="password" name="password" placeholder="Passwort" required class="border p-2 mb-2">

@@ -6,17 +6,42 @@ import os
 sqlite3_db = 'database.db'
 conn = sqlite3.connect(sqlite3_db)
 c = conn.cursor()
-c.execute('''CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT, password TEXT, role TEXT)''')
-c.execute('SELECT * FROM users WHERE username=?', ('admin',))
+
+# Create the roles table
+c.execute('''CREATE TABLE IF NOT EXISTS roles (
+    id INTEGER PRIMARY KEY,
+    name TEXT UNIQUE
+)''')
+# Insert default roles if they do not exist
+c.execute('SELECT * FROM roles WHERE name=?', ('admin',))
 if not c.fetchone():
-    hashed_password = bcrypt.hashpw('password'.encode('utf-8'), bcrypt.gensalt())
-    c.execute('''INSERT INTO users (username, password, role) VALUES ('admin', ?, 'admin')''', (hashed_password,))
+    c.execute('INSERT INTO roles (name) VALUES (?)', ('admin',))
+c.execute('SELECT * FROM roles WHERE name=?', ('user',))
+if not c.fetchone():
+    c.execute('INSERT INTO roles (name) VALUES (?)', ('user',))
 conn.commit()
 
+# Create the users table with role_id referencing roles.id
+c.execute('''CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY,
+    username TEXT UNIQUE,
+    password TEXT,
+    role_id INTEGER,
+    FOREIGN KEY(role_id) REFERENCES roles(id)
+)''')
+
+# Check if admin user exists
+c.execute('SELECT * FROM users WHERE username=?', ('admin',))
+if not c.fetchone():
+    c.execute('SELECT id FROM roles WHERE name=?', ('admin',))
+    admin_role_id = c.fetchone()[0]
+    hashed_password = bcrypt.hashpw('password'.encode('utf-8'), bcrypt.gensalt())
+    c.execute('INSERT INTO users (username, password, role_id) VALUES (?, ?, ?)',
+              ('admin', hashed_password, admin_role_id))
+conn.commit()
 
 app = Flask(__name__)
 app.secret_key = os.urandom(12)
-
 
 @app.context_processor
 def inject_layout():
@@ -28,10 +53,14 @@ def inject_layout():
         if username:
             conn = sqlite3.connect(sqlite3_db)
             c = conn.cursor()
-            c.execute('SELECT * FROM users WHERE username=?', (username,))
+            # Join users and roles to fetch role name
+            c.execute('''
+                SELECT users.username, roles.name FROM users
+                INNER JOIN roles ON users.role_id = roles.id
+                WHERE username=?''', (username,))
             user = c.fetchone()
             conn.close()
-            if user and user[3] == 'admin':  # Check if the user has the 'admin' role
+            if user and user[1] == 'admin':
                 admin_panel_link = '''
                 <a href="/adminpanel" 
                     class="bg-stone-700 text-stone-200 border-none px-4 py-2 cursor-pointer ml-4 mt-2 rounded hover:bg-stone-600">
@@ -58,7 +87,6 @@ def inject_layout():
     '''
     return dict(render_header=render_header, footer=footer_html)
 
-
 @app.route('/')
 def index():
     if 'username' in session:
@@ -66,14 +94,12 @@ def index():
     title = request.args.get('title', 'Default Title')
     return render_template('index.html', title=title, header_text='Eigene Website Login Test')
 
-
 @app.route('/register', methods=['POST', 'GET'])
 def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())  # Hash the password
-
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
         conn = sqlite3.connect(sqlite3_db)
         c = conn.cursor()
         c.execute('SELECT * FROM users WHERE username=?', (username,))
@@ -81,38 +107,39 @@ def register():
         if existing_user:
             conn.close()
             return render_template('register.html', error='Username already exists')
-        
-        c.execute('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', (username, hashed_password, 'user'))
+        # Get the role id for a normal user
+        c.execute('SELECT id FROM roles WHERE name=?', ('user',))
+        role_id = c.fetchone()[0]
+        c.execute('INSERT INTO users (username, password, role_id) VALUES (?, ?, ?)',
+                  (username, hashed_password, role_id))
         conn.commit()
         conn.close()
         return render_template('index.html', message='User registered successfully')
     return render_template('register.html', header_text='Regstrierung')
 
-
 @app.post('/login')
 def login():
     username = request.form['username']
     password = request.form['password']
-
     conn = sqlite3.connect(sqlite3_db)
     c = conn.cursor()
-    c.execute('SELECT * FROM users WHERE username=?', (username,))
+    # Fetch user along with role name
+    c.execute('''
+        SELECT users.id, users.username, users.password, roles.name FROM users
+        INNER JOIN roles ON users.role_id = roles.id
+        WHERE username=?''', (username,))
     user = c.fetchone()
     conn.close()
-
-    # Verify the hashed password
     if user and bcrypt.checkpw(password.encode('utf-8'), user[2]):
-        session['username'] = username  # Store the username in the session
+        session['username'] = username
         return redirect(url_for('welcome'))
     else:
         return render_template('index.html', error='Passwort oder Benutzername falsch', header_text='Eigene Website Login Test')
 
-
 @app.route('/logout')
 def logout():
-    session.pop('username', None)  # Remove the username from the session
+    session.pop('username', None)
     return redirect(url_for('index'))
-
 
 @app.route('/welcome')
 def welcome():
@@ -121,7 +148,6 @@ def welcome():
         return redirect(url_for('index'))
     return render_template('welcome.html', header_text='Hauptseite', username=username)
 
-
 @app.route('/user/<int:user_id>')
 def user_profile(user_id):
     logged_in_user = session.get('username')
@@ -129,21 +155,20 @@ def user_profile(user_id):
         return redirect(url_for('index'))
     conn = sqlite3.connect(sqlite3_db)
     c = conn.cursor()
-    c.execute('SELECT * FROM users WHERE id=?', (user_id,))
+    c.execute('SELECT username FROM users WHERE id=?', (user_id,))
     user = c.fetchone()
     conn.close()
     if user:
-        return render_template('users.html', user=user[1], header_text=f'Profil von {user[1]}')
+        return render_template('users.html', user=user[0], header_text=f'Profil von {user[0]}')
     else:
         return render_template('users.html', error='User not found')
-
 
 @app.get('/search_user')
 def search_user():
     logged_in_user = session.get('username')
     if not logged_in_user:
         return redirect(url_for('index'))
-    username = request.args.get('username', '')
+    username = request.args.get('username_search', '')
     conn = sqlite3.connect(sqlite3_db)
     c = conn.cursor()
     c.execute('SELECT id, username FROM users WHERE username LIKE ?', (f'%{username}%',))
@@ -159,13 +184,24 @@ def admin_panel():
         return redirect(url_for('index'))
     conn = sqlite3.connect(sqlite3_db)
     c = conn.cursor()
-    c.execute('SELECT * FROM users WHERE username=?', (logged_in_user,))
+    # Verify that the current user is an admin
+    c.execute('''
+        SELECT users.id, users.username, roles.name
+        FROM users
+        INNER JOIN roles ON users.role_id = roles.id
+        WHERE username=?
+    ''', (logged_in_user,))
     user = c.fetchone()
-    if not user or user[3] != 'admin':  # Check if the user exists and has the 'admin' role
+    if not user or user[2] != 'admin':
         conn.close()
         return redirect(url_for('index'))
-    c.execute('SELECT * FROM users')
-    users = c.fetchall()
+    # Fetch all users with their respective role names
+    c.execute('''
+        SELECT users.id, users.username, roles.name as rolename
+        FROM users
+        INNER JOIN roles ON users.role_id = roles.id
+    ''')
+    users = [[row[0], row[1], row[2]] for row in c.fetchall()]
     conn.close()
     return render_template('admin.html', users=users, header_text='Admin Panel')
 
@@ -176,31 +212,37 @@ def add_user():
         return redirect(url_for('index'))
     conn = sqlite3.connect(sqlite3_db)
     c = conn.cursor()
-    c.execute('SELECT * FROM users WHERE username=?', (logged_in_user,))
+    c.execute('''
+        SELECT users.id, users.username, roles.name FROM users
+        INNER JOIN roles ON users.role_id = roles.id
+        WHERE username=?''', (logged_in_user,))
     user = c.fetchone()
-    if not user or user[3] != 'admin':  # Check if the user exists and has the 'admin' role
+    if not user or user[2] != 'admin':
         conn.close()
         return redirect(url_for('index'))
     username = request.form['username']
-    password = request.form['password']  # Get password from the form
+    password = request.form['password']
     role = request.form['role']
-    
     c.execute('SELECT * FROM users')
     users = c.fetchall()
-    
-    # Check if the username already exists
     c.execute('SELECT * FROM users WHERE username=?', (username,))
     existing_user = c.fetchone()
     if existing_user:
         conn.close()
         return render_template('admin.html', error='Username already exists', header_text='Admin Panel', users=users)
-    
+    # Lookup role id for the provided role
+    c.execute('SELECT id FROM roles WHERE name=?', (role,))
+    role_row = c.fetchone()
+    if not role_row:
+        conn.close()
+        return render_template('admin.html', error='Invalid role', header_text='Admin Panel', users=users)
+    role_id = role_row[0]
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-    c.execute('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', (username, hashed_password, role))
+    c.execute('INSERT INTO users (username, password, role_id) VALUES (?, ?, ?)',
+              (username, hashed_password, role_id))
     conn.commit()
     conn.close()
     return redirect(url_for('admin_panel'))
-
 
 @app.route('/edit_user/<int:user_id>', methods=['POST', 'GET'])
 def edit_user(user_id):
@@ -209,32 +251,47 @@ def edit_user(user_id):
         return redirect(url_for('index'))
     conn = sqlite3.connect(sqlite3_db)
     c = conn.cursor()
-    c.execute('SELECT * FROM users WHERE username=?', (logged_in_user,))
+    c.execute('''
+        SELECT users.id, users.username, roles.name FROM users
+        INNER JOIN roles ON users.role_id = roles.id
+        WHERE username=?''', (logged_in_user,))
     user = c.fetchone()
-    if not user or user[3] != 'admin':  # Check if the user exists and has the 'admin' role
+    if not user or user[2] != 'admin':
         conn.close()
         return redirect(url_for('index'))
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
         role = request.form['role']
-        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()) if password else None
-        if hashed_password:
-            c.execute('UPDATE users SET username=?, password=?, role=? WHERE id=?', (username, hashed_password, role, user_id))
+        # Get role_id for the new role
+        c.execute('SELECT id FROM roles WHERE name=?', (role,))
+        role_row = c.fetchone()
+        if not role_row:
+            conn.close()
+            return render_template('edit_user.html', error='Invalid role', header_text='Edit User')
+        new_role_id = role_row[0]
+        if password:
+            hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+            c.execute('UPDATE users SET username=?, password=?, role_id=? WHERE id=?',
+                      (username, hashed_password, new_role_id, user_id))
         else:
-            c.execute('UPDATE users SET username=?, role=? WHERE id=?', (username, role, user_id))
+            c.execute('UPDATE users SET username=?, role_id=? WHERE id=?',
+                      (username, new_role_id, user_id))
         conn.commit()
         conn.close()
         return redirect(url_for('admin_panel'))
     else:
-        c.execute('SELECT * FROM users WHERE id=?', (user_id,))
+        # Get the user data (with role name) for editing
+        c.execute('''
+            SELECT users.id, users.username, roles.name FROM users
+            INNER JOIN roles ON users.role_id = roles.id
+            WHERE users.id=?''', (user_id,))
         user_to_edit = c.fetchone()
         conn.close()
         if user_to_edit:
             return render_template('edit_user.html', user=user_to_edit, header_text='Edit User')
         else:
             return redirect(url_for('admin_panel'))
-
 
 @app.route('/delete_user/<int:user_id>', methods=['POST'])
 def delete_user(user_id):
@@ -243,9 +300,12 @@ def delete_user(user_id):
         return redirect(url_for('index'))
     conn = sqlite3.connect(sqlite3_db)
     c = conn.cursor()
-    c.execute('SELECT * FROM users WHERE username=?', (logged_in_user,))
+    c.execute('''
+        SELECT users.id, users.username, roles.name FROM users
+        INNER JOIN roles ON users.role_id = roles.id
+        WHERE username=?''', (logged_in_user,))
     user = c.fetchone()
-    if not user or user[3] != 'admin':  # Check if the user exists and has the 'admin' role
+    if not user or user[2] != 'admin':
         conn.close()
         return redirect(url_for('index'))
     c.execute('DELETE FROM users WHERE id=?', (user_id,))
@@ -254,7 +314,6 @@ def delete_user(user_id):
     return redirect(url_for('admin_panel'))
 
 
-# when py stops running, close the connection to the database
 @app.teardown_appcontext
 def close_connection(exception):
     if hasattr(g, 'sqlite_db'):

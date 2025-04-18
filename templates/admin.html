@@ -31,7 +31,7 @@
                                 <td class="border border-gray-400 px-4 py-2">{{ user[3] }}</td>
                                 <td class="border border-gray-400 px-4 py-2">
                                     <!-- Edit User Modal Trigger -->
-                                    <button type="button" onclick="openEditModal('{{ user[0] }}', '{{ user[1] }}', '{{ user[3] }}')" class="bg-blue-500 text-white px-2 py-1 rounded cursor-pointer">Bearbeiten</button>
+                                    <button type="button" onclick="openEditModal('{{ user[0] }}', '{{ user[1] }}', '{{ user[2] }}')" class="bg-blue-500 text-white px-2 py-1 rounded cursor-pointer">Bearbeiten</button>
                                     <!-- Delete User Form -->
                                     <form method="POST" action="{{ url_for('delete_user', user_id=user[0]) }}" class="inline" onsubmit="return confirm('Möchten Sie diesen Benutzer wirklich löschen?');">
                                         <button type="submit" class="bg-red-500 text-white px-2 py-1 rounded cursor-pointer">Löschen</button>
